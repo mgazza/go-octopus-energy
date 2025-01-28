@@ -1,0 +1,2996 @@
+swagger: '2.0'
+info:
+  title: Octopus Energy REST API
+  version: v1
+host: api.octopus.energy
+schemes:
+  - https
+paths:
+  /v1/accounts/:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Create'
+      responses:
+        '201':
+          description: Account successfully created
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        '202':
+          description: >-
+            The submission has incurred an error, but requires further
+            investigation from a member of our team in order to complete the
+            request.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        '400':
+          description: >-
+            The submissions incurred validation errors that cannot be fixed by a
+            member of our team. This may occur if the provided reference is a
+            duplicate and the existing enrolment has not previously been
+            rejected.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - accounts
+      description: 'WARNING: This endpoint is only available to partner organisations.'
+      operationId: Create an account
+  /v1/accounts/{account_id}:
+    get:
+      operationId: getAccount
+      summary: Retrieve account details
+      tags:
+        - accounts
+      description: >
+        Returns account information, including meter points for electricity
+        and gas, if available.
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      produces:
+        - application/json
+      parameters:
+        - description: id of the account
+          in: path
+          name: account_id
+          required: true
+          type: string
+      responses:
+        '200':
+          description: The requested account details
+          schema:
+            $ref: '#/definitions/Account'
+  '/v1/accounts/{account_number}/tariff-renewal/':
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - description: Number of the account
+          in: path
+          name: account_number
+          required: true
+          type: string
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/BusinessTariffRenewal'
+      responses:
+        '201':
+          description: Agreement(s) successfully created
+          schema:
+            $ref: '#/definitions/AgreementsCreated'
+        '400':
+          description: Could not create agreement due to domain or validation errors.
+          schema:
+            $ref: '#/definitions/ValidationOrDomainError'
+        '401':
+          description: Incorrect authentication.
+        '403':
+          description: The user does not have sufficient permissions for this action.
+        '404':
+          description: The account does not exist.
+        '500':
+          description: >-
+            Intermittent internal error. If it persists, please get in touch
+            with the support team.
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - accounts
+      description: >-
+        This end-point allows a new agreement to be created for an existing
+        account. It is restricted to business accounts. WARNING: This endpoint
+        is only available to partner organisations.
+      operationId: Renew a business tariff
+  '/v1/electricity-meter-points/{mpan}/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: mpan
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/ElectricityMeterPoint'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - electricity-meter-points
+      description: >-
+        Retrieve the details of a meter-point. This endpoint can be used to get
+        the GSP of a given meter-point.
+      operationId: Get Electricity Meter Point
+  '/v1/electricity-meter-points/{mpan}/meters/{serial_number}/consumption/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: >-
+            Aggregates consumption over a specified time period. A day is
+            considered to start and end at midnight in the server’s timezone.
+            The default is that consumption is returned in half-hour periods.
+            Accepted values are: * ‘hour’ * ‘day’ * ‘week’ * ‘month’ *
+            ‘quarter’.
+          in: query
+          name: group_by
+          required: false
+          type: string
+        - in: path
+          name: mpan
+          required: true
+          type: string
+        - description: >-
+            Ordering of results returned. Default is that results are returned
+            in reverse order from latest available figure. Valid values: *
+            ‘period’, to give results ordered forward. * ‘-period’, (default),
+            to give results ordered from most recent backwards.
+          in: query
+          name: order_by
+          required: false
+          type: string
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 25000 to
+            give a full year of half-hourly consumption details.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - in: path
+          name: serial_number
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedConsumptionList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - electricity-meter-points
+      description: >-
+        Return a list of consumption values (in kWh) for half-hour periods for a
+        given meter-point and meter. WARNING: Half-hourly consumption data is
+        only available for smart meters. Requests for consumption data for
+        non-smart meters will return an empty response payload.
+      operationId: List consumption for an electricity meter
+  '/v1/gas-meter-points/{mprn}/meters/{serial_number}/consumption/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: >-
+            Aggregates consumption over a specified time period. A day is
+            considered to start and end at midnight in the server’s timezone.
+            The default is that consumption is returned in half-hour periods.
+            Accepted values are: * ‘hour’ * ‘day’ * ‘week’ * ‘month’ *
+            ‘quarter’.
+          in: query
+          name: group_by
+          required: false
+          type: string
+        - in: path
+          name: mprn
+          required: true
+          type: string
+        - description: >-
+            Ordering of results returned. Default is that results are returned
+            in reverse order from latest available figure. Valid values: *
+            ‘period’, to give results ordered forward. * ‘-period’, (default),
+            to give results ordered from most recent backwards.
+          in: query
+          name: order_by
+          required: false
+          type: string
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 25000 to
+            give a full year of half-hourly consumption details.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - in: path
+          name: serial_number
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedConsumptionList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - gas-meter-points
+      description: >-
+        Return a list of consumption values (in kWh for SMETS1 and in m^3 for
+        SMETS2) for half-hour periods for a given gas meter-point and meter.
+        WARNING: Half-hourly consumption data is only available for smart
+        meters. Requests for consumption data for non-smart meters will return
+        an empty response payload.
+      operationId: List consumption for a gas meter
+  /v1/industry/grid-supply-points/:
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: A postcode to filter GSPs by.
+          in: query
+          name: postcode
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedGridSupplyPointList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - industry
+      description: >-
+        Return a list of GSP objects, optionally filtered by postcode. If we’re
+        unable to map the passed postcode to a GSP, an empty list will be
+        returned
+      operationId: List Industry Grid Supply Points
+  /v1/ivr-support/minimal-enqueue-for-incidents/:
+    post:
+      parameters: []
+      responses:
+        '200':
+          description: No response body
+      security:
+        - {}
+      tags:
+        - ivr-support
+      description: >-
+        Enqueue a call from Twilio with the fewest steps.
+
+
+        Designed to point phone numbers at when Studio is unavailable.
+
+        May also be useful to mitigate other types of incident.
+
+        Performs the minimal amount of work to enqueue a call, storing a record
+        of it.
+
+        As such, non-essential work is omitted.
+      operationId: Minimal Twilio Enqueue
+  /v1/products/:
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: >-
+            Show products available for new agreements on the given datetime.
+            Defaults to current datetime, effectively showing products that are
+            currently available.
+          format: date-time
+          in: query
+          name: available_at
+          type: string
+        - in: query
+          name: brand
+          type: string
+        - description: Show only business products
+          in: query
+          name: is_business
+          type: boolean
+        - description: Show only green products
+          in: query
+          name: is_green
+          type: boolean
+        - in: query
+          name: is_historical
+          type: boolean
+        - description: Show only pre-pay products
+          in: query
+          name: is_prepay
+          type: boolean
+        - description: Show only tracker products
+          in: query
+          name: is_tracker
+          type: boolean
+        - description: Show only variable products
+          in: query
+          name: is_variable
+          type: boolean
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedProductsList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: >-
+        Return a list of energy products. By default, results will be public
+        energy products but if the authenticated organisations will also see
+        products available to their organisation.
+      operationId: List Products
+  '/v1/products/{product_code}/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The point in time in which to show the active charges. Defaults to
+            current datetime.
+          format: date-time
+          in: query
+          name: tariffs_active_at
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Product'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: >-
+        Retrieve the details of a product (including all its tariffs) for a
+        particular point in time.
+      operationId: Retrieve a Product
+  '/v1/products/{product_code}/electricity-tariffs/{tariff_code}/day-unit-rates/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 1500 to
+            give up to a month of half-hourly prices.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The code of the tariff to be retrieved, for example
+            E-1R-VAR-17-01-11-A.
+          in: path
+          name: tariff_code
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedHistoricalChargeList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: |-
+        Abstract base class for generic types.
+
+        On Python 3.12 and newer, generic classes implicitly inherit from
+        Generic when they declare a parameter list after the class's name::
+
+            class Mapping[KT, VT]:
+                def __getitem__(self, key: KT) -> VT:
+                    ...
+                # Etc.
+
+        On older versions of Python, however, generic classes have to
+        explicitly inherit from Generic.
+
+        After a class has been declared to be generic, it can then be used as
+        follows::
+
+            def lookup_name[KT, VT](mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:
+                try:
+                    return mapping[key]
+                except KeyError:
+                    return default
+      operationId: List Electricity Tariff Day Unit Rates
+  '/v1/products/{product_code}/electricity-tariffs/{tariff_code}/night-unit-rates/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 1500 to
+            give up to a month of half-hourly prices.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The code of the tariff to be retrieved, for example
+            E-1R-VAR-17-01-11-A.
+          in: path
+          name: tariff_code
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedHistoricalChargeList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: |-
+        Abstract base class for generic types.
+
+        On Python 3.12 and newer, generic classes implicitly inherit from
+        Generic when they declare a parameter list after the class's name::
+
+            class Mapping[KT, VT]:
+                def __getitem__(self, key: KT) -> VT:
+                    ...
+                # Etc.
+
+        On older versions of Python, however, generic classes have to
+        explicitly inherit from Generic.
+
+        After a class has been declared to be generic, it can then be used as
+        follows::
+
+            def lookup_name[KT, VT](mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:
+                try:
+                    return mapping[key]
+                except KeyError:
+                    return default
+      operationId: List Electricity Tariff Night Unit Rates
+  '/v1/products/{product_code}/electricity-tariffs/{tariff_code}/standard-unit-rates/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 1500 to
+            give up to a month of half-hourly prices.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The code of the tariff to be retrieved, for example
+            E-1R-VAR-17-01-11-A.
+          in: path
+          name: tariff_code
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedHistoricalChargeList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: |-
+        Abstract base class for generic types.
+
+        On Python 3.12 and newer, generic classes implicitly inherit from
+        Generic when they declare a parameter list after the class's name::
+
+            class Mapping[KT, VT]:
+                def __getitem__(self, key: KT) -> VT:
+                    ...
+                # Etc.
+
+        On older versions of Python, however, generic classes have to
+        explicitly inherit from Generic.
+
+        After a class has been declared to be generic, it can then be used as
+        follows::
+
+            def lookup_name[KT, VT](mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:
+                try:
+                    return mapping[key]
+                except KeyError:
+                    return default
+      operationId: List Electricity Tariff Standard Unit Rates
+  '/v1/products/{product_code}/electricity-tariffs/{tariff_code}/standing-charges/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 1500 to
+            give up to a month of half-hourly prices.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The code of the tariff to be retrieved, for example
+            E-1R-VAR-17-01-11-A.
+          in: path
+          name: tariff_code
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedHistoricalChargeList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: |-
+        Abstract base class for generic types.
+
+        On Python 3.12 and newer, generic classes implicitly inherit from
+        Generic when they declare a parameter list after the class's name::
+
+            class Mapping[KT, VT]:
+                def __getitem__(self, key: KT) -> VT:
+                    ...
+                # Etc.
+
+        On older versions of Python, however, generic classes have to
+        explicitly inherit from Generic.
+
+        After a class has been declared to be generic, it can then be used as
+        follows::
+
+            def lookup_name[KT, VT](mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:
+                try:
+                    return mapping[key]
+                except KeyError:
+                    return default
+      operationId: List Electricity Tariff Standing Charges
+  '/v1/products/{product_code}/gas-tariffs/{tariff_code}/standard-unit-rates/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 1500 to
+            give up to a month of half-hourly prices.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The code of the tariff to be retrieved, for example
+            E-1R-VAR-17-01-11-A.
+          in: path
+          name: tariff_code
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedHistoricalChargeList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: |-
+        Abstract base class for generic types.
+
+        On Python 3.12 and newer, generic classes implicitly inherit from
+        Generic when they declare a parameter list after the class's name::
+
+            class Mapping[KT, VT]:
+                def __getitem__(self, key: KT) -> VT:
+                    ...
+                # Etc.
+
+        On older versions of Python, however, generic classes have to
+        explicitly inherit from Generic.
+
+        After a class has been declared to be generic, it can then be used as
+        follows::
+
+            def lookup_name[KT, VT](mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:
+                try:
+                    return mapping[key]
+                except KeyError:
+                    return default
+      operationId: List Gas Tariff Standard Unit Rates
+  '/v1/products/{product_code}/gas-tariffs/{tariff_code}/standing-charges/':
+    get:
+      produces:
+        - application/json
+      parameters:
+        - description: A page number within the paginated result set.
+          in: query
+          name: page
+          required: false
+          type: integer
+        - description: >-
+            Page size of returned results. Default is 100, maximum is 1500 to
+            give up to a month of half-hourly prices.
+          in: query
+          name: page_size
+          required: false
+          type: integer
+        - description: >-
+            Show results from the given datetime (inclusive). This parameter can
+            be provided on its own.
+          in: query
+          name: period_from
+          required: false
+          type: string
+          format: datetime
+        - description: >-
+            Show results up to the given datetime (exclusive). You must also
+            provide the period_from parameter in order to create a range.
+          in: query
+          name: period_to
+          required: false
+          type: string
+          format: datetime
+        - description: 'The code of the product to be retrieved, for example VAR-17-01-11.'
+          in: path
+          name: product_code
+          required: true
+          type: string
+        - description: >-
+            The code of the tariff to be retrieved, for example
+            E-1R-VAR-17-01-11-A.
+          in: path
+          name: tariff_code
+          required: true
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/PaginatedHistoricalChargeList'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - products
+      description: |-
+        Abstract base class for generic types.
+
+        On Python 3.12 and newer, generic classes implicitly inherit from
+        Generic when they declare a parameter list after the class's name::
+
+            class Mapping[KT, VT]:
+                def __getitem__(self, key: KT) -> VT:
+                    ...
+                # Etc.
+
+        On older versions of Python, however, generic classes have to
+        explicitly inherit from Generic.
+
+        After a class has been declared to be generic, it can then be used as
+        follows::
+
+            def lookup_name[KT, VT](mapping: Mapping[KT, VT], key: KT, default: VT) -> VT:
+                try:
+                    return mapping[key]
+                except KeyError:
+                    return default
+      operationId: List Gas Tariff Standing Charges
+  /v1/quotes/:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Create'
+      responses:
+        '201':
+          description: The quote has been created
+          schema:
+            $ref: '#/definitions/QuoteCreated'
+        '400':
+          description: >-
+            Validation errors. The error response payload will take the same
+            field structure as the request payload.
+          schema:
+            $ref: '#/definitions/CreateQuoteError'
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - quotes
+      description: >-
+        At least one electricity or gas meter-point must be included. A maximum
+        of one electricity and one gas meter-point can be included at this time.
+        For all meter-points, at least one of gsp or postcode must be included.
+        All meter-points must be based in the UK, excluding Northern Ireland.
+        All meter-points must belong to the same gsp or postcode. WARNING: This
+        endpoint is only available to partner organisations.
+      operationId: Create a quote
+  '/v1/quotes/{code}/products/{product_id}/':
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: path
+          name: code
+          required: true
+          type: string
+        - in: path
+          name: product_id
+          required: true
+          type: string
+        - in: body
+          name: body
+          required: true
+          schema:
+            $ref: '#/definitions/Emails'
+      responses:
+        '204':
+          description: No validation error and quote or quoted product found
+        '400':
+          description: Validation errors per index of the email
+          schema:
+            $ref: '#/definitions/ValidationErrors'
+        '404':
+          description: No quote / quoted product found for given quote_code / product_id
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+      tags:
+        - quotes
+      description: >-
+        Use this endpoint after quote creation to send a quote summary email to
+        the specified recipients if they wish to enact the quote at a later
+        time. A quote share record is saved to the database for each recipient’s
+        email address. WARNING: This endpoint is only available to partner
+        organisations.
+      operationId: Share a quote via email
+  /v1/voice/twilio/enqueue-audio/:
+    post:
+      parameters: []
+      responses:
+        '200':
+          description: No response body
+      security:
+        - KeyAuthentication: []
+        - DRFKrakenTokenAuthentication: []
+        - {}
+      tags:
+        - voice
+      operationId: Twilio Enqueue Audio
+definitions:
+  Address:
+    properties:
+      address_line_1:
+        maxLength: 512
+        type: string
+      address_line_2:
+        maxLength: 512
+        type: string
+      address_line_3:
+        maxLength: 512
+        type: string
+      county:
+        maxLength: 512
+        type: string
+      delivery_point_identifier:
+        maxLength: 11
+        type: string
+      postcode:
+        maxLength: 8
+        type: string
+      town:
+        maxLength: 512
+        type: string
+    required:
+      - address_line_1
+      - postcode
+    type: object
+  Affiliate:
+    description: >-
+      This serializer is used to allow affiliates to pass a signup reward code
+      when creating
+
+      accounts which later will then give credit to the accounts once their
+      payments start.
+    properties:
+      affiliate_link_subdomain:
+        maxLength: 64
+        type: string
+      organization_name:
+        maxLength: 128
+        title: >-
+          The name of an existing organization that will be used to create an
+          account for an affiliate.
+        type: string
+      signup_reward_code:
+        default: ''
+        maxLength: 255
+        title: >-
+          The code of an existing signup reward referral scheme that will be
+          used for giving credit to the created account as a signup reward.
+        type: string
+    type: object
+  Agreement:
+    properties:
+      mpxn:
+        title: MPRN or MPAN of the meter point getting a new agreement.
+        type: string
+      tariff_code:
+        title: Tariff code for the new agreements.
+        type: string
+      valid_from_date:
+        format: date
+        title: Date (inclusive) the new agreement is valid from.
+        type: string
+      valid_to_date:
+        format: date
+        title: Date (exclusive) the new agreement is valid to.
+        type: string
+    required:
+      - mpxn
+      - tariff_code
+      - valid_from_date
+    type: object
+  AgreementsCreated:
+    properties:
+      account_number:
+        type: string
+      agreements:
+        items:
+          $ref: '#/definitions/Agreement'
+        type: array
+    required:
+      - account_number
+      - agreements
+    type: object
+  BespokeElectricityUnitRate:
+    properties:
+      payment_method:
+        description: |-
+          This field should be used for gas meters.
+
+          * `DD` - DD
+          * `NDD` - NDD
+          * `PP` - PP
+        enum:
+          - DD
+          - NDD
+          - PP
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+        x-spec-enum-id: 84f5b0df65c6e1bb
+      rate_type:
+        description: >-
+          If the register_identifier is not provided, the rate type must be
+          provided instead.
+
+
+          * `STANDARD` - Standard rate (pence per kWh)
+
+          * `ECO7_DAY` - Day (or peak) rate (pence per kWh)
+
+          * `ECO7_NIGHT` - Night (or off-peak) rate (pence per kWh)
+
+          * `OFF_PEAK` - Additional off-peak rate for three-rate tariffs (pence
+          per kWh)
+
+          * `SUMMER_PEAK` - Summer peak rate (pence per kWh) for two-rate
+          tariffs
+
+          * `SUMMER_OFF_PEAK` - Summer off-peak rate (pence per kWh) for
+          two-rate tariffs
+
+          * `WINTER_PEAK` - Winter peak rate (pence per kWh) for two-rate
+          tariffs
+
+          * `WINTER_OFF_PEAK` - Winter off-peak rate (pence per kWh) for
+          two-rate tariffs
+
+          * `NUCLEAR_RAB` - Nuclear RAB rate (pence per day) for business
+          tariffs
+
+          * `TNUOS` - TNUoS rate (pence per day) for business tariffs
+
+          * `CAPACITY_MARKET` - Capacity Market rate (pence per day) for
+          business tariffs
+
+          * `EV_DEVICE` - Electric vehicle device rate (pence per kWh) for
+          sub-meter billing
+        enum:
+          - STANDARD
+          - ECO7_DAY
+          - ECO7_NIGHT
+          - OFF_PEAK
+          - SUMMER_PEAK
+          - SUMMER_OFF_PEAK
+          - WINTER_PEAK
+          - WINTER_OFF_PEAK
+          - NUCLEAR_RAB
+          - TNUOS
+          - CAPACITY_MARKET
+          - EV_DEVICE
+        title: The rate type of the unit rate.
+        type: string
+        x-spec-enum-id: f858ac6e825e10d0
+      unit_rate:
+        description: This field should be used for gas meters.
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+    required:
+      - unit_rate
+    type: object
+  BespokePPSTariffRates:
+    properties:
+      payment_method:
+        description: |-
+          * `DD` - Direct Debit
+          * `NDD` - Non-Direct Debit
+          * `PP` - Prepayment
+        enum:
+          - DD
+          - NDD
+          - PP
+        title: The payment method for the rate.
+        type: string
+        x-spec-enum-id: 362e54c421bbcaea
+      standing_charge:
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per day of the charge (excluding VAT).
+        type: string
+      unit_rate:
+        description: This field should be used for gas meters.
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+      unit_rates:
+        description: >-
+          For elec meters, the unit rates are provided on a per register basis
+          in this array.
+        items:
+          $ref: '#/definitions/BespokeElectricityUnitRate'
+        title: List of the value in pence per kWh of the charges (excluding VAT).
+        type: array
+    required:
+      - payment_method
+    type: object
+  BespokeTariffRates:
+    properties:
+      standing_charge:
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per day of the charge (excluding VAT).
+        type: string
+      unit_rate:
+        description: This field should be used for gas meters.
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+      unit_rates:
+        description: >-
+          For elec meters, the unit rates are provided on a per register basis
+          in this array.
+        items:
+          $ref: '#/definitions/BespokeElectricityUnitRate'
+        title: List of the value in pence per kWh of the charges (excluding VAT).
+        type: array
+    type: object
+  Business:
+    properties:
+      annual_turnover:
+        description: In pounds £ (GBP)
+        minimum: 0
+        title: The estimated annual turnover
+        type: integer
+      business_type:
+        description: |-
+          * `SOLE_TRADER` - SOLE_TRADER
+          * `LIMITED` - LIMITED
+          * `CHARITY` - CHARITY
+          * `PARTNERSHIP` - PARTNERSHIP
+          * `GOVERNMENT` - GOVERNMENT
+        enum:
+          - SOLE_TRADER
+          - LIMITED
+          - CHARITY
+          - PARTNERSHIP
+          - GOVERNMENT
+        type: string
+        x-spec-enum-id: 06546d50dff1170f
+      head_count:
+        minimum: 0
+        title: 'The head count of the business, i.e. number of staff.'
+        type: integer
+      is_ccl_exempt:
+        title: Whether the business is exempt from paying CCL (Climate Change Levy).
+        type: boolean
+      is_vat_exempt:
+        title: Whether the business is exempt from paying VAT.
+        type: boolean
+      name:
+        maxLength: 255
+        title: The name of the business.
+        type: string
+      number:
+        description: This field is required for 'LIMITED' businesses.</p>
+        maxLength: 8
+        title: The registered number of the business.
+        type: string
+    required:
+      - business_type
+      - is_ccl_exempt
+      - is_vat_exempt
+      - name
+    type: object
+  BusinessTariffRenewal:
+    properties:
+      agreements:
+        items:
+          $ref: '#/definitions/_Agreement'
+        title: List of all agreements to be created to the given account.
+        type: array
+    required:
+      - agreements
+    type: object
+  Consumption:
+    properties:
+      consumption:
+        readOnly: true
+        type: string
+        format: number
+      interval_end:
+        format: date-time
+        type: string
+      interval_start:
+        format: date-time
+        type: string
+    required:
+      - consumption
+      - interval_end
+      - interval_start
+    type: object
+  Create:
+    description: >-
+      Serializer to create an account via a REST API.
+
+
+      Temporary to allow for legacy behaviour where uplifts do not count towards
+      quoted amounts,
+
+      which is potentially only OEGB behaviour.
+    properties:
+      account_reference:
+        description: The account reference must be in NAMESPACE-VALUE format.
+        maxLength: 128
+        title: >-
+          A unique reference to previous external account number or similar
+          account identifier.
+        type: string
+      account_type:
+        description: |-
+          * `BUSINESS` - BUSINESS
+          * `DOMESTIC` - DOMESTIC
+          * `BUSINESS OCCUPIER` - BUSINESS OCCUPIER
+          * `OCCUPIER` - OCCUPIER
+          * `MANAGED` - MANAGED
+          * `PORTFOLIO LEAD` - PORTFOLIO LEAD
+          * `SYSTEM` - SYSTEM
+          * `BUSINESS VACANT` - BUSINESS VACANT
+          * `DOMESTIC VACANT` - DOMESTIC VACANT
+          * `ANONYMISED` - ANONYMISED
+        enum:
+          - BUSINESS
+          - DOMESTIC
+          - BUSINESS OCCUPIER
+          - OCCUPIER
+          - MANAGED
+          - PORTFOLIO LEAD
+          - SYSTEM
+          - BUSINESS VACANT
+          - DOMESTIC VACANT
+          - ANONYMISED
+        type: string
+        x-spec-enum-id: 638c7f1ee82f84cf
+      affiliate:
+        $ref: '#/definitions/Affiliate'
+      billing_address:
+        $ref: '#/definitions/Address'
+      brand_code:
+        default: OCTOPUS_ENERGY
+        description: >-
+          This is only required when creating an account in an instance with
+          multiple brands and for which the requested brand is not the default
+          brand of that instance.
+
+
+          * `OCTOPUS_ENERGY` - OCTOPUS_ENERGY
+
+          * `COOP_ENERGY` - COOP_ENERGY
+
+          * `LONDON_POWER` - LONDON_POWER
+        enum:
+          - OCTOPUS_ENERGY
+          - COOP_ENERGY
+          - LONDON_POWER
+        title: A code to specify the account should be for a particular brand.
+        type: string
+        x-spec-enum-id: ded3e750186f979d
+      business:
+        $ref: '#/definitions/Business'
+      deposit:
+        $ref: '#/definitions/Deposit'
+      electricity_meter_points:
+        description: >-
+          At least one electricity or gas meter-point must be included. A
+          maximum of two electricity and one gas meter-point can be included.
+          All meter-points must be based in the Great Britain. All meter-points
+          must belong to the same address. For an electricity meter-point, at
+          least one of 'mpan' or 'address' must be included. At least one of
+          'consumption_standard' (standard tariff) or a combination of
+          'consumption_day' and 'consumption_night' (two-rate tariff) or
+          'consumption_day', 'consumption_night' and 'consumption_off_peak'
+          (three-rate tariff) must be included depending on the type of tariff
+          specified.
+        items:
+          $ref: '#/definitions/ElectricityMeterPoint'
+        type: array
+      gas_meter_points:
+        description: >-
+          At least one electricity or gas meter-point must be included. A
+          maximum of two electricity and one gas meter-point can be included.
+          All meter-points must be based in the Great Britain. All meter-points
+          must belong to the same address. For a gas meter-point, at least one
+          of 'mprn' or 'address' must be included, as well as
+          'consumption_standard'.
+        items:
+          $ref: '#/definitions/GasMeterPoint'
+        type: array
+      is_change_of_tenancy:
+        title: Whether this account is a change of tenancy at the property.
+        type: boolean
+      metadata:
+        items:
+          $ref: '#/definitions/Metadata'
+        title: >-
+          An array of key value pairs for storing generic metadata relating to
+          an account.
+        type: array
+      payment:
+        allOf:
+          - $ref: '#/definitions/Payment'
+        description: >-
+          The payment details are required when using the method
+          'MONTHLY_DIRECT_DEBIT' but are optional if all the meters are of type
+          PREPAYMENT'. The 'MONTHLY_DIRECT_PAYMENT' method is not available to
+          all users.
+      preferred_ssd:
+        description: >-
+          Only include this field if the earliest possible supply startdate is
+          not preferred.
+        format: date
+        title: A preferred supply start date.
+        type: string
+      promo_reward_code:
+        maxLength: 255
+        title: A promotional code that will be applied to the account.
+        type: string
+      quote_code:
+        description: >-
+          The code of an existing legacy quote created using the legacy
+          'CreatQuote' mutation as part of the join supplier journey for this
+          new customer. If the quote was generated as part of an affiliate
+          session, the affiliate link and any query parameters belonging to the
+          session will be associated with the created account. Note: only one of
+          'quote_code' and 'quote_request_code' should be provided in the input.
+        type: string
+      quote_request_code:
+        description: >-
+          The code of an existing quote created using the 'QuoteNewMeterPoints'
+          mutation as part of the join supplier journey for this new customer.
+          If the quote was generated as part of an affiliate session, the
+          affiliate link and any query parameters belonging to the session will
+          be associated with the created account. Note: only one of 'quote_code'
+          and 'quote_request_code' should be provided in the input.
+        type: string
+      reference:
+        description: The reference provided should be unique per switch.
+        maxLength: 64
+        title: A unique partner reference.
+        type: string
+      referral_code:
+        maxLength: 256
+        title: >-
+          The referral code of an existing account linked to a Kraken referral
+          scheme.
+        type: string
+      requires_postal_comms:
+        description: >-
+          When requires_postal_comms is True, then set to POSTAL, else set to
+          EMAIL, when not provided it will be null.
+        title: Communication delivery preference
+        type: boolean
+      sales_channel:
+        description: |-
+          * `DIRECT` - Direct
+          * `PRICE_COMPARISON` - Price comparison site
+          * `TELESALES` - Telesales
+          * `DIGI_TELESALES` - Digital telesales
+          * `EVENTS` - Events
+          * `FIELD_SALES` - Field sales
+          * `AGGREGATOR` - Aggregator
+          * `PARTNERSHIPS` - Partnerships
+          * `NEW_TENANT` - New tenant
+          * `MOVE_IN` - Move in
+          * `WORKPLACE_POP_UP` - Workplace pop-up
+          * `BROKER` - Broker
+          * `PARENT_POWER` - Parent power
+          * `PEOPLE_POWER` - People power
+          * `GIFT_OF_KIT` - Gift of kit
+          * `HIGH_REFERRER` - High referrer
+          * `SUPPLIER_OF_LAST_RESORT` - Supplier of last resort
+          * `ACQUISITION` - Acquisition
+          * `WORKS_WITH_OCTOPUS` - Works with octopus
+          * `LANDLORD` - Landlord
+          * `DEBT_COLLECTION_AGENCY` - Debt collection agency
+          * `OCTOPUS_TRUSTED_PARTNERS` - Octopus Trusted Partners
+        enum:
+          - DIRECT
+          - PRICE_COMPARISON
+          - TELESALES
+          - DIGI_TELESALES
+          - EVENTS
+          - FIELD_SALES
+          - AGGREGATOR
+          - PARTNERSHIPS
+          - NEW_TENANT
+          - MOVE_IN
+          - WORKPLACE_POP_UP
+          - BROKER
+          - PARENT_POWER
+          - PEOPLE_POWER
+          - GIFT_OF_KIT
+          - HIGH_REFERRER
+          - SUPPLIER_OF_LAST_RESORT
+          - ACQUISITION
+          - WORKS_WITH_OCTOPUS
+          - LANDLORD
+          - DEBT_COLLECTION_AGENCY
+          - OCTOPUS_TRUSTED_PARTNERS
+        type: string
+        x-spec-enum-id: dbe7b27d5dbfbc39
+      sales_subchannel:
+        maxLength: 128
+        title: >-
+          An optional segmentation of the sales channel, e.g. the names of the
+          specific price comparison site, or the telesales organisation.
+        type: string
+      signup_reward_code:
+        maxLength: 255
+        type: string
+      smart_meter_interest:
+        description: >-
+          * `SMETS2_INTEREST_PRIORITY` - Priority
+
+          * `SMETS2_INTEREST_INTERESTED` - Interested
+
+          * `SMETS2_INTEREST_NOT_AT_THE_MOMENT` - No interest at the moment, ask
+          again later
+
+          * `SMETS2_INTEREST_NOT_INTERESTED` - Not Interested
+        enum:
+          - SMETS2_INTEREST_PRIORITY
+          - SMETS2_INTEREST_INTERESTED
+          - SMETS2_INTEREST_NOT_AT_THE_MOMENT
+          - SMETS2_INTEREST_NOT_INTERESTED
+        title: The occupier’s interest in installing a smart meter.
+        type: string
+        x-spec-enum-id: 1572bf2283d2d4bc
+      smart_meter_read_permission:
+        description: |-
+          * `MONTHLY` - Monthly
+          * `DAILY` - Daily
+          * `HALF_HOURLY` - Half-hourly
+        enum:
+          - MONTHLY
+          - DAILY
+          - HALF_HOURLY
+        title: >-
+          The read permission frequency the occupier grants to meter readings
+          from smart meters.
+        type: string
+        x-spec-enum-id: 9ecbf0449f7d896c
+      smart_onboarding_product_type:
+        description: >-
+          This is a restricted option. Please get in touch for information on
+          whether this can be enabled and what the allowed options are.
+
+
+          * `AGILE` - Agile
+
+          * `OCTOPUS_GO` - Octopus Go
+
+          * `TESLA_IMPORT` - Tesla Import
+
+          * `INTELLIGENT_OCTOPUS` - Intelligent Octopus
+
+          * `GO_GREEN` - Go Green
+
+          * `COSY_OCTOPUS` - Cosy Octopus
+
+          * `OCTOPUS_FLUX` - Octopus Flux
+
+          * `TRACKER` - Tracker
+
+          * `AIRA_ZERO` - Aira Zero
+        enum:
+          - AGILE
+          - OCTOPUS_GO
+          - TESLA_IMPORT
+          - INTELLIGENT_OCTOPUS
+          - GO_GREEN
+          - COSY_OCTOPUS
+          - OCTOPUS_FLUX
+          - TRACKER
+          - AIRA_ZERO
+        title: >-
+          A code to indicate which type of smart tariff the customer is meant to
+          onboard onto.
+        type: string
+        x-spec-enum-id: a46e3f682e7fa8f0
+      sold_at:
+        format: date-time
+        title: A datetime of when the account sale was made.
+        type: string
+      source:
+        description: |-
+          * `CALL_CENTRE_INBOUND` - CALL_CENTRE_INBOUND
+          * `CALL_CENTRE_OUTBOUND` - CALL_CENTRE_OUTBOUND
+          * `INTERNET` - INTERNET
+          * `FACE_TO_FACE` - FACE_TO_FACE
+        enum:
+          - CALL_CENTRE_INBOUND
+          - CALL_CENTRE_OUTBOUND
+          - INTERNET
+          - FACE_TO_FACE
+        type: string
+        x-spec-enum-id: 469af0e61e167f84
+      users:
+        items:
+          $ref: '#/definitions/User'
+        type: array
+    required:
+      - account_type
+      - billing_address
+      - is_change_of_tenancy
+      - reference
+      - source
+      - users
+    type: object
+  CreateQuoteError:
+    properties:
+      brand_code:
+        items:
+          type: string
+        type: array
+      business_products_only:
+        items:
+          type: string
+        type: array
+      electricity_meter_points:
+        items:
+          type: string
+        type: array
+      gas_meter_points:
+        items:
+          type: string
+        type: array
+      product_codes:
+        items:
+          type: string
+        type: array
+    type: object
+  CreditScoreData:
+    properties:
+      risk_bracket:
+        description: |-
+          * `LOW` - Low
+          * `MID` - Medium
+          * `HIGH` - High
+          * `UNKNOWN` - Unknown
+        enum:
+          - LOW
+          - MID
+          - HIGH
+          - UNKNOWN
+        type: string
+        x-spec-enum-id: 223f5653b4f31481
+      score:
+        maximum: 9999
+        minimum: 0
+        type: integer
+    type: object
+  Deposit:
+    properties:
+      amount:
+        minimum: 1
+        type: integer
+      key:
+        type: string
+      reason:
+        type: string
+    type: object
+  Eco7ElectricityTariff:
+    properties:
+      code:
+        maxLength: 255
+        type: string
+      day_unit_rate_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      day_unit_rate_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      dual_fuel_discount_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      dual_fuel_discount_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+      exit_fees_exc_vat:
+        readOnly: true
+        type: integer
+      exit_fees_inc_vat:
+        readOnly: true
+        type: integer
+      exit_fees_type:
+        readOnly: true
+        type: string
+      links:
+        items:
+          $ref: '#/definitions/Link'
+        readOnly: true
+        type: array
+      night_unit_rate_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      night_unit_rate_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      online_discount_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      online_discount_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+      standing_charge_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standing_charge_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+    required:
+      - code
+      - day_unit_rate_exc_vat
+      - day_unit_rate_inc_vat
+      - dual_fuel_discount_exc_vat
+      - dual_fuel_discount_inc_vat
+      - exit_fees_exc_vat
+      - exit_fees_inc_vat
+      - exit_fees_type
+      - links
+      - night_unit_rate_exc_vat
+      - night_unit_rate_inc_vat
+      - online_discount_exc_vat
+      - online_discount_inc_vat
+      - standing_charge_exc_vat
+      - standing_charge_inc_vat
+    type: object
+  ElectricityMeterPoint:
+    properties:
+      address:
+        $ref: '#/definitions/Address'
+      bespoke_pps_tariff_rates:
+        description: >-
+          If applicable, must contain two objects: one for direct debit bespoke
+          and another for non-direct debit bespoke rates. Cannot be used in
+          conjunction with 'bespoke_tariff_rates'.
+        items:
+          $ref: '#/definitions/BespokePPSTariffRates'
+        maxItems: 2
+        minItems: 0
+        type: array
+      bespoke_tariff_rates:
+        allOf:
+          - $ref: '#/definitions/BespokeTariffRates'
+        description: Cannot be used in conjunction with 'bespoke_pps_tariff_rates'.
+        title: 'A json object containing bespoke tariff rates, if applicable.'
+      consumption_day:
+        description: Required if eco7 or three-rate tariff.
+        maximum: 500000
+        minimum: 1
+        title: The expected annual consumption for the day/peak register in kWh.
+        type: integer
+      consumption_night:
+        description: Required if eco7 or three-rate tariff.
+        maximum: 500000
+        minimum: 0
+        title: >-
+          The expected annual consumption for the night/off-peak register in
+          kWh.
+        type: integer
+      consumption_off_peak:
+        description: Required if three-rate tariff.
+        maximum: 500000
+        minimum: 0
+        title: >-
+          The expected annual consumption for the additional off-peak register
+          in kWh.
+        type: integer
+      consumption_standard:
+        description: Required if standard tariff.
+        maximum: 500000
+        minimum: 1
+        title: The expected annual consumption for the standard register in kWh.
+        type: integer
+      current_supplier_name:
+        maxLength: 255
+        type: string
+      current_supplier_tariff:
+        maxLength: 255
+        type: string
+      fixed_tpi_fee:
+        minimum: 0
+        type: integer
+      has_smart_meter:
+        title: Whether a smart meter is installed. The default is 'false'.
+        type: boolean
+      meter_type:
+        default: CREDIT
+        description: >-
+          The default is 'CREDIT', which represents any kind of traditional
+          credit meter or smart meter. This field is mandatory for traditional
+          prepay meters, for which the value 'PREPAYMENT' should be used.
+
+
+          * `CREDIT` - CREDIT
+
+          * `PREPAYMENT` - PREPAYMENT
+        enum:
+          - CREDIT
+          - PREPAYMENT
+        type: string
+        x-spec-enum-id: ebae2e9cf73bc01e
+      mpan:
+        maxLength: 13
+        title: The meter-point identifier.
+        type: string
+      preferred_ssd:
+        format: date
+        type: string
+      quote:
+        $ref: '#/definitions/Quote'
+      quoted_product_id:
+        description: >-
+          The ID of the market supply quoted product returned by the
+          'QuoteNewMeterPoints' or 'QuoteNewMeterPointsOnBespokeProducts'
+          mutation which was selected by the customer for this meter point.
+          Required if a 'quote_request_code' is supplied.
+        type: integer
+      standing_charge_uplift:
+        format: decimal
+        pattern: '^-?\d{0,4}(?:\.\d{0,2})?$'
+        title: >-
+          The amount to be added to the standing charge as commission (a string,
+          pence per day).
+        type: string
+      tariff_code:
+        description: >-
+          Must match an available tariff on the 'sold_at' datetime for the
+          authenticating partner. Required if no 'quote_request_code' is
+          supplied.
+        maxLength: 255
+        title: The tariff code as stored by the supplier.
+        type: string
+      unit_rate_uplift:
+        format: decimal
+        pattern: '^-?\d{0,2}(?:\.\d{0,2})?$'
+        title: >-
+          The amount to be added to the unit rate as commission (a string, pence
+          per kWh).
+        type: string
+    required:
+      - quote
+    type: object
+  Emails:
+    properties:
+      emails:
+        items:
+          format: email
+          type: string
+        title: An array of one or more email addresses to send the email to.
+        type: array
+    required:
+      - emails
+    type: object
+  ErrorResponse:
+    properties:
+      detail:
+        type: string
+    required:
+      - detail
+    type: object
+  GasMeterPoint:
+    properties:
+      address:
+        $ref: '#/definitions/Address'
+      bespoke_pps_tariff_rates:
+        description: >-
+          If applicable, must contain two objects: one for direct debit bespoke
+          and another for non-direct debit bespoke rates. Cannot be used in
+          conjunction with 'bespoke_tariff_rates'.
+        items:
+          $ref: '#/definitions/BespokePPSTariffRates'
+        maxItems: 2
+        minItems: 0
+        type: array
+      bespoke_tariff_rates:
+        allOf:
+          - $ref: '#/definitions/BespokeTariffRates'
+        description: Cannot be used in conjunction with 'bespoke_pps_tariff_rates'.
+        title: 'A json object containing bespoke tariff rates, if applicable.'
+      consumption_standard:
+        description: Required if standard tariff.
+        maximum: 500000
+        minimum: 1
+        title: The expected annual consumption for the standard register in kWh.
+        type: integer
+      current_supplier_name:
+        maxLength: 255
+        type: string
+      current_supplier_tariff:
+        maxLength: 255
+        type: string
+      fixed_tpi_fee:
+        minimum: 0
+        type: integer
+      has_smart_meter:
+        title: Whether a smart meter is installed. The default is 'false'.
+        type: boolean
+      meter_type:
+        default: CREDIT
+        description: >-
+          The default is 'CREDIT', which represents any kind of traditional
+          credit meter or smart meter. This field is mandatory for traditional
+          prepay meters, for which the value 'PREPAYMENT' should be used.
+
+
+          * `CREDIT` - CREDIT
+
+          * `PREPAYMENT` - PREPAYMENT
+        enum:
+          - CREDIT
+          - PREPAYMENT
+        type: string
+        x-spec-enum-id: ebae2e9cf73bc01e
+      mprn:
+        maxLength: 10
+        title: The meter-point identifier.
+        type: string
+      preferred_ssd:
+        format: date
+        type: string
+      quote:
+        $ref: '#/definitions/Quote'
+      quoted_product_id:
+        description: >-
+          The ID of the market supply quoted product returned by the
+          'QuoteNewMeterPoints' or 'QuoteNewMeterPointsOnBespokeProducts'
+          mutation which was selected by the customer for this meter point.
+          Required if a 'quote_request_code' is supplied.
+        type: integer
+      standing_charge_uplift:
+        format: decimal
+        pattern: '^-?\d{0,4}(?:\.\d{0,2})?$'
+        title: >-
+          The amount to be added to the standing charge as commission (a string,
+          pence per day).
+        type: string
+      tariff_code:
+        description: >-
+          Must match an available tariff on the 'sold_at' datetime for the
+          authenticating partner. Required if no 'quote_request_code' is
+          supplied.
+        maxLength: 255
+        title: The tariff code as stored by the supplier.
+        type: string
+      unit_rate_uplift:
+        format: decimal
+        pattern: '^-?\d{0,2}(?:\.\d{0,2})?$'
+        title: >-
+          The amount to be added to the unit rate as commission (a string, pence
+          per kWh).
+        type: string
+    required:
+      - consumption_standard
+      - quote
+    type: object
+  GasTariff:
+    properties:
+      code:
+        maxLength: 255
+        type: string
+      dual_fuel_discount_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      dual_fuel_discount_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+      exit_fees_exc_vat:
+        readOnly: true
+        type: integer
+      exit_fees_inc_vat:
+        readOnly: true
+        type: integer
+      exit_fees_type:
+        readOnly: true
+        type: string
+      links:
+        items:
+          $ref: '#/definitions/Link'
+        readOnly: true
+        type: array
+      online_discount_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      online_discount_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+      standard_unit_rate_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standard_unit_rate_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standing_charge_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standing_charge_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+    required:
+      - code
+      - dual_fuel_discount_exc_vat
+      - dual_fuel_discount_inc_vat
+      - exit_fees_exc_vat
+      - exit_fees_inc_vat
+      - exit_fees_type
+      - links
+      - online_discount_exc_vat
+      - online_discount_inc_vat
+      - standard_unit_rate_exc_vat
+      - standard_unit_rate_inc_vat
+      - standing_charge_exc_vat
+      - standing_charge_inc_vat
+    type: object
+  GridSupplyPoint:
+    properties:
+      group_id:
+        type: string
+    required:
+      - group_id
+    type: object
+  HistoricalCharge:
+    properties:
+      payment_method:
+        readOnly: true
+        type: string
+        x-nullable: true
+      valid_from:
+        format: date-time
+        readOnly: true
+        type: string
+        x-nullable: true
+      valid_to:
+        format: date-time
+        readOnly: true
+        type: string
+        x-nullable: true
+      value_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      value_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+    required:
+      - payment_method
+      - valid_from
+      - valid_to
+      - value_exc_vat
+      - value_inc_vat
+    type: object
+  Link:
+    properties:
+      href:
+        type: string
+      method:
+        type: string
+      rel:
+        type: string
+    required:
+      - href
+      - method
+      - rel
+    type: object
+  Metadata:
+    properties:
+      key:
+        maxLength: 1024
+        title: Key on which the metadata will be stored.
+        type: string
+      value:
+        title: >-
+          A json object containing any arbitrary piece of data to store in
+          relation to the account.
+    required:
+      - key
+      - value
+    type: object
+  PSR:
+    properties:
+      requires_signup:
+        description: >-
+          If true, indicates that the user should be signed up to the PSR but
+          the categories are unknown. Therefore the user requires contacting to
+          determine the categories.
+        type: boolean
+    type: object
+  PaginatedConsumptionList:
+    properties:
+      count:
+        example: 123
+        type: integer
+      next:
+        example: >-
+          https://api.octopus.energy/v1/electricity-meter-points/S1212345678901/meters/Z16N389556/consumption/?page=4
+        format: uri
+        type: string
+        x-nullable: true
+      previous:
+        example: >-
+          https://api.octopus.energy/v1/electricity-meter-points/S1212345678901/meters/Z16N389556/consumption/?page=2
+        format: uri
+        type: string
+        x-nullable: true
+      results:
+        items:
+          $ref: '#/definitions/Consumption'
+        type: array
+    required:
+      - count
+      - results
+    type: object
+  PaginatedGridSupplyPointList:
+    properties:
+      count:
+        example: 123
+        type: integer
+      next:
+        example: 'https://api.octopus.energy/v1/industry/grid-supply-points/?page=4'
+        format: uri
+        type: string
+        x-nullable: true
+      previous:
+        example: 'https://api.octopus.energy/v1/industry/grid-supply-points/?page=2'
+        format: uri
+        type: string
+        x-nullable: true
+      results:
+        items:
+          $ref: '#/definitions/GridSupplyPoint'
+        type: array
+    required:
+      - count
+      - results
+    type: object
+  PaginatedHistoricalChargeList:
+    properties:
+      count:
+        example: 123
+        type: integer
+      next:
+        example: >-
+          https://api.octopus.energy/v1/products/VAR-17-01-11/electricity-tariffs/E-1R-VAR-17-01-11-A/day-unit-rates/?page=4
+        format: uri
+        type: string
+        x-nullable: true
+      previous:
+        example: >-
+          https://api.octopus.energy/v1/products/VAR-17-01-11/electricity-tariffs/E-1R-VAR-17-01-11-A/day-unit-rates/?page=2
+        format: uri
+        type: string
+        x-nullable: true
+      results:
+        items:
+          $ref: '#/definitions/HistoricalCharge'
+        type: array
+    required:
+      - count
+      - results
+    type: object
+  PaginatedProductsList:
+    properties:
+      count:
+        example: 123
+        type: integer
+      next:
+        example: 'https://api.octopus.energy/v1/products/?page=4'
+        format: uri
+        type: string
+        x-nullable: true
+      previous:
+        example: 'https://api.octopus.energy/v1/products/?page=2'
+        format: uri
+        type: string
+        x-nullable: true
+      results:
+        items:
+          $ref: '#/definitions/Products'
+        type: array
+    required:
+      - count
+      - results
+    type: object
+  Payment:
+    properties:
+      account_name:
+        maxLength: 255
+        minLength: 3
+        title: The name associated with the bank account.
+        type: string
+      account_number:
+        title: The bank account number.
+        type: string
+      account_sort_code:
+        title: The bank account sort code.
+        type: string
+      delay_days:
+        maximum: 90
+        minimum: 5
+        title: The number of days to delay the payment for a bill triggered schedule.
+        type: integer
+      method:
+        description: >-
+          * `MONTHLY_DIRECT_DEBIT` - Monthly Direct Debit
+
+          * `MONTHLY_DIRECT_PAYMENT` - POROB schedule, payment initiated by the
+          customer
+
+          * `BILL_TRIGGERED_DIRECT_DEBIT` - POROB Direct Debit Schedule
+        enum:
+          - MONTHLY_DIRECT_DEBIT
+          - MONTHLY_DIRECT_PAYMENT
+          - BILL_TRIGGERED_DIRECT_DEBIT
+        type: string
+        x-spec-enum-id: 8f4d8157581e05f1
+      payment_day:
+        description: Only required for 'MONTHLY_DIRECT_DEBIT' schedules.
+        maximum: 28
+        minimum: 1
+        title: The preferred day of the month for the payment request.
+        type: integer
+    required:
+      - method
+    type: object
+  Product:
+    properties:
+      available_from:
+        format: date-time
+        type: string
+      available_to:
+        format: date-time
+        type: string
+        x-nullable: true
+      brand:
+        readOnly: true
+        type: string
+      code:
+        maxLength: 128
+        type: string
+      description:
+        description: This will be shown to customers during sign-up
+        type: string
+      display_name:
+        description: This name will be shown to customers during sign-up
+        maxLength: 255
+        type: string
+      dual_register_electricity_tariffs:
+        additionalProperties:
+          additionalProperties:
+            allOf:
+              - $ref: '#/definitions/Eco7ElectricityTariff'
+            description: >-
+              Tariffs per payment method (DIRECT_DEBIT_MONTHLY,
+              DIRECT_DEBIT_QUARTERLY, POROB, PREPAYMENT, VARYING)
+          title: Payment methods per GSP's group id
+          type: object
+        readOnly: true
+        type: object
+      full_name:
+        maxLength: 255
+        type: string
+      is_business:
+        title: Is a business product?
+        type: boolean
+      is_green:
+        title: Is a green product?
+        type: boolean
+      is_prepay:
+        type: boolean
+      is_restricted:
+        readOnly: true
+        type: boolean
+      is_tracker:
+        title: Is a tracker product?
+        type: boolean
+      is_variable:
+        title: Is variable?
+        type: boolean
+      links:
+        description: Historical charges can be browsed using the provided URLs.
+        items:
+          $ref: '#/definitions/Link'
+        readOnly: true
+        type: array
+      sample_consumption:
+        allOf:
+          - $ref: '#/definitions/SampleConsumption'
+        readOnly: true
+      sample_quotes:
+        allOf:
+          - $ref: '#/definitions/SampleQuotes'
+        readOnly: true
+      single_register_electricity_tariffs:
+        additionalProperties:
+          additionalProperties:
+            allOf:
+              - $ref: '#/definitions/StandardElectricityTariff'
+            description: >-
+              Tariffs per payment method (DIRECT_DEBIT_MONTHLY,
+              DIRECT_DEBIT_QUARTERLY, POROB, PREPAYMENT, VARYING)
+          title: Payment methods per GSP's group id
+          type: object
+        readOnly: true
+        type: object
+      single_register_gas_tariffs:
+        additionalProperties:
+          additionalProperties:
+            allOf:
+              - $ref: '#/definitions/GasTariff'
+            description: >-
+              Tariffs per payment method (DIRECT_DEBIT_MONTHLY,
+              DIRECT_DEBIT_QUARTERLY, POROB, PREPAYMENT, VARYING)
+          title: Payment methods per GSP's group id
+          type: object
+        readOnly: true
+        type: object
+      tariffs_active_at:
+        format: date-time
+        readOnly: true
+        type: string
+      term:
+        description: Duration of agreements using this product in months
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
+    required:
+      - available_from
+      - brand
+      - code
+      - description
+      - display_name
+      - dual_register_electricity_tariffs
+      - full_name
+      - is_restricted
+      - links
+      - sample_consumption
+      - sample_quotes
+      - single_register_electricity_tariffs
+      - single_register_gas_tariffs
+      - tariffs_active_at
+    type: object
+  Products:
+    properties:
+      available_from:
+        format: date-time
+        type: string
+      available_to:
+        format: date-time
+        type: string
+        x-nullable: true
+      brand:
+        readOnly: true
+        type: string
+      code:
+        maxLength: 128
+        type: string
+      description:
+        description: This will be shown to customers during sign-up
+        type: string
+      direction:
+        description: |-
+          * `IMPORT` - Import
+          * `EXPORT` - Export
+        enum:
+          - IMPORT
+          - EXPORT
+        type: string
+        x-spec-enum-id: 699f3d8b23f18c63
+      display_name:
+        description: This name will be shown to customers during sign-up
+        maxLength: 255
+        type: string
+      full_name:
+        maxLength: 255
+        type: string
+      is_business:
+        title: Is a business product?
+        type: boolean
+      is_green:
+        title: Is a green product?
+        type: boolean
+      is_prepay:
+        type: boolean
+      is_restricted:
+        readOnly: true
+        type: boolean
+      is_tracker:
+        title: Is a tracker product?
+        type: boolean
+      is_variable:
+        title: Is variable?
+        type: boolean
+      links:
+        description: Historical charges can be browsed using the provided URLs.
+        items:
+          $ref: '#/definitions/Link'
+        readOnly: true
+        type: array
+      term:
+        description: Duration of agreements using this product in months
+        maximum: 2147483647
+        minimum: 0
+        type: integer
+        x-nullable: true
+    required:
+      - available_from
+      - brand
+      - code
+      - description
+      - display_name
+      - full_name
+      - is_restricted
+      - links
+    type: object
+  Quote:
+    properties:
+      annual_payment:
+        description: >-
+          This value must be provided in pence. For business quotes, the price
+          is exclusive of VAT, while for non-business quotes, it should be
+          inclusive of VAT.
+        minimum: 0
+        title: >-
+          The estimated annual payment for this meter-point based on
+          consumption.
+        type: integer
+    required:
+      - annual_payment
+    type: object
+  QuoteCreated:
+    properties:
+      code:
+        type: string
+      gsp:
+        type: string
+      products:
+        items:
+          type: object
+        readOnly: true
+        type: array
+    required:
+      - code
+      - gsp
+      - products
+    type: object
+  SampleConsumption:
+    properties:
+      dual_fuel_dual_rate:
+        additionalProperties:
+          type: integer
+        title: Consumption type
+        type: object
+      dual_fuel_single_rate:
+        additionalProperties:
+          type: integer
+        title: Consumption type
+        type: object
+      electricity_dual_rate:
+        additionalProperties:
+          type: integer
+        title: Consumption type
+        type: object
+      electricity_single_rate:
+        additionalProperties:
+          type: integer
+        title: Consumption type
+        type: object
+    required:
+      - dual_fuel_dual_rate
+      - dual_fuel_single_rate
+      - electricity_dual_rate
+      - electricity_single_rate
+    type: object
+  SampleQuotes:
+    properties:
+      dual_fuel_dual_rate:
+        additionalProperties:
+          type: integer
+        title: Annual cost (inc or exc)
+        type: object
+      dual_fuel_single_rate:
+        additionalProperties:
+          type: integer
+        title: Annual cost (inc or exc)
+        type: object
+      electricity_dual_rate:
+        additionalProperties:
+          type: integer
+        title: Annual cost (inc or exc)
+        type: object
+      electricity_single_rate:
+        additionalProperties:
+          type: integer
+        title: Annual cost (inc or exc)
+        type: object
+    required:
+      - dual_fuel_dual_rate
+      - dual_fuel_single_rate
+      - electricity_dual_rate
+      - electricity_single_rate
+    type: object
+  StandardElectricityTariff:
+    properties:
+      code:
+        maxLength: 255
+        type: string
+      dual_fuel_discount_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      dual_fuel_discount_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+      exit_fees_exc_vat:
+        readOnly: true
+        type: integer
+      exit_fees_inc_vat:
+        readOnly: true
+        type: integer
+      exit_fees_type:
+        readOnly: true
+        type: string
+      links:
+        items:
+          $ref: '#/definitions/Link'
+        readOnly: true
+        type: array
+      online_discount_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+      online_discount_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+      standard_unit_rate_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standard_unit_rate_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standing_charge_exc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+      standing_charge_inc_vat:
+        format: double
+        readOnly: true
+        type: number
+        x-nullable: true
+    required:
+      - code
+      - dual_fuel_discount_exc_vat
+      - dual_fuel_discount_inc_vat
+      - exit_fees_exc_vat
+      - exit_fees_inc_vat
+      - exit_fees_type
+      - links
+      - online_discount_exc_vat
+      - online_discount_inc_vat
+      - standard_unit_rate_exc_vat
+      - standard_unit_rate_inc_vat
+      - standing_charge_exc_vat
+      - standing_charge_inc_vat
+    type: object
+  SuccessResponse:
+    properties:
+      number:
+        title: Number of the newly created account
+        type: string
+    required:
+      - number
+    type: object
+  User:
+    properties:
+      credit_score_data:
+        $ref: '#/definitions/CreditScoreData'
+      date_of_birth:
+        format: date
+        type: string
+      email:
+        description: Cannot already be in use for an existing account.
+        format: email
+        maxLength: 512
+        type: string
+      family_name:
+        maxLength: 255
+        type: string
+      given_name:
+        maxLength: 255
+        type: string
+      landline:
+        maxLength: 64
+        type: string
+      mobile:
+        maxLength: 64
+        type: string
+      opted_in_for_marketing:
+        type: boolean
+      opted_in_to_third_parties:
+        default: false
+        type: boolean
+      psr:
+        allOf:
+          - $ref: '#/definitions/PSR'
+        title: Priority Services Register details for the user
+      title:
+        maxLength: 255
+        type: string
+    required:
+      - email
+      - family_name
+      - given_name
+      - opted_in_for_marketing
+    type: object
+  ValidationErrors:
+    properties:
+      emails:
+        type: object
+    required:
+      - emails
+    type: object
+  ValidationOrDomainError:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+    required:
+      - errors
+    type: object
+  _Agreement:
+    properties:
+      bespoke_tariff_rates:
+        items:
+          $ref: '#/definitions/_BespokeTariffRate'
+        title: 'Bespoke tariff rates for the new agreement, if applicable.'
+        type: array
+      commission:
+        allOf:
+          - $ref: '#/definitions/_Commission'
+        title: Commission applicable to this tariff renewal.
+      mpxn:
+        title: MPRN or MPAN of the meter point getting a new agreement.
+        type: string
+      tariff_code:
+        title: Tariff code for the new agreements.
+        type: string
+      valid_from_date:
+        format: date
+        title: Date (inclusive) the new agreement is valid from.
+        type: string
+      valid_to_date:
+        format: date
+        title: Date (exclusive) the new agreement is valid to.
+        type: string
+    required:
+      - mpxn
+      - tariff_code
+      - valid_from_date
+    type: object
+  _BespokeRegisterRate:
+    properties:
+      payment_method:
+        description: |-
+          This field should be used for gas meters.
+
+          * `DD` - DD
+          * `NDD` - NDD
+          * `PP` - PP
+        enum:
+          - DD
+          - NDD
+          - PP
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+        x-spec-enum-id: 84f5b0df65c6e1bb
+      rate_type:
+        description: >-
+          If the register_identifier is not provided, the rate type must be
+          provided instead.
+
+
+          * `STANDARD` - Standard rate (pence per kWh)
+
+          * `ECO7_DAY` - Day (or peak) rate (pence per kWh)
+
+          * `ECO7_NIGHT` - Night (or off-peak) rate (pence per kWh)
+
+          * `OFF_PEAK` - Additional off-peak rate for three-rate tariffs (pence
+          per kWh)
+
+          * `SUMMER_PEAK` - Summer peak rate (pence per kWh) for two-rate
+          tariffs
+
+          * `SUMMER_OFF_PEAK` - Summer off-peak rate (pence per kWh) for
+          two-rate tariffs
+
+          * `WINTER_PEAK` - Winter peak rate (pence per kWh) for two-rate
+          tariffs
+
+          * `WINTER_OFF_PEAK` - Winter off-peak rate (pence per kWh) for
+          two-rate tariffs
+
+          * `NUCLEAR_RAB` - Nuclear RAB rate (pence per day) for business
+          tariffs
+
+          * `TNUOS` - TNUoS rate (pence per day) for business tariffs
+
+          * `CAPACITY_MARKET` - Capacity Market rate (pence per day) for
+          business tariffs
+
+          * `EV_DEVICE` - Electric vehicle device rate (pence per kWh) for
+          sub-meter billing
+        enum:
+          - STANDARD
+          - ECO7_DAY
+          - ECO7_NIGHT
+          - OFF_PEAK
+          - SUMMER_PEAK
+          - SUMMER_OFF_PEAK
+          - WINTER_PEAK
+          - WINTER_OFF_PEAK
+          - NUCLEAR_RAB
+          - TNUOS
+          - CAPACITY_MARKET
+          - EV_DEVICE
+        title: The rate type of the unit rate.
+        type: string
+        x-spec-enum-id: f858ac6e825e10d0
+      register_identifier:
+        maxLength: 32
+        title: The identifier of the register to which this unit rate applies.
+        type: string
+      unit_rate:
+        description: This field should be used for gas meters.
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+    required:
+      - unit_rate
+    type: object
+  _BespokeTariffRate:
+    properties:
+      meter_serial_number:
+        maxLength: 32
+        title: Meter serial number to which the bespoke tariff applies
+        type: string
+      registers:
+        description: >-
+          For elec meters, the unit rates are provided on a per register basis
+          in this array.
+        items:
+          $ref: '#/definitions/_BespokeRegisterRate'
+        type: array
+      standing_charge:
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per day of the charge (excluding VAT).
+        type: string
+      unit_rate:
+        description: This field should be used for gas meters.
+        format: decimal
+        pattern: '^-?\d{0,7}(?:\.\d{0,5})?$'
+        title: The value in pence per kWh of the charge (excluding VAT).
+        type: string
+    required:
+      - meter_serial_number
+      - standing_charge
+    type: object
+  _Commission:
+    properties:
+      affiliate_link_subdomain:
+        maxLength: 64
+        title: >-
+          Sub-domain of the affiliate link due the commission for this
+          agreement.
+        type: string
+      affiliate_organisation_name:
+        maxLength: 128
+        title: >-
+          Name of the affiliate organisation due the commission for this
+          agreement.
+        type: string
+      fixed_tpi_fee:
+        minimum: 0
+        type: integer
+      standing_charge_uplift:
+        format: decimal
+        pattern: '^-?\d{0,11}(?:\.\d{0,2})?$'
+        title: Uplift in pence to be paid to the affiliate.
+        type: string
+      unit_rate_uplift:
+        format: decimal
+        pattern: '^-?\d{0,11}(?:\.\d{0,2})?$'
+        title: Uplift in pence to be paid to the affiliate.
+        type: string
+    required:
+      - affiliate_organisation_name
+      - unit_rate_uplift
+    type: object
+  Account:
+    type: object
+    properties:
+      number:
+        type: string
+        example: "<account-number>"
+      properties:
+        type: array
+        items:
+          $ref: '#/definitions/Property'
+
+  Property:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1234567
+      moved_in_at:
+        type: string
+        format: datetime
+        example: "2020-11-30T00:00:00Z"
+      moved_out_at:
+        type: string
+        format: datetime
+      address_line_1:
+        type: string
+        example: "10 Downing Street"
+      address_line_2:
+        type: string
+        example: ""
+      address_line_3:
+        type: string
+        example: ""
+      town:
+        type: string
+        example: "LONDON"
+      county:
+        type: string
+        example: ""
+      postcode:
+        type: string
+        example: "W1 1AA"
+      electricity_meter_points:
+        type: array
+        items:
+          $ref: '#/definitions/AccountElectricityMeterPoint'
+      gas_meter_points:
+        type: array
+        items:
+          $ref: '#/definitions/AccountGasMeterPoint'
+
+  AccountElectricityMeterPoint:
+    type: object
+    properties:
+      mpan:
+        type: string
+        example: "1000000000000"
+      profile_class:
+        type: integer
+        example: 1
+      consumption_standard:
+        type: integer
+        example: 2560
+      meters:
+        type: array
+        items:
+          $ref: '#/definitions/Meter'
+      agreements:
+        type: array
+        items:
+          $ref: '#/definitions/AccountAgreement'
+      is_export:
+        type: boolean
+        example: false
+
+  AccountGasMeterPoint:
+    type: object
+    properties:
+      mprn:
+        type: string
+        example: "1234567890"
+      consumption_standard:
+        type: integer
+        example: 3448
+      meters:
+        type: array
+        items:
+          $ref: '#/definitions/GasMeter'
+      agreements:
+        type: array
+        items:
+          $ref: '#/definitions/AccountAgreement'
+
+  Meter:
+    type: object
+    properties:
+      serial_number:
+        type: string
+        example: "1111111111"
+      registers:
+        type: array
+        items:
+          $ref: '#/definitions/Register'
+
+  GasMeter:
+    type: object
+    properties:
+      serial_number:
+        type: string
+        example: "12345678901234"
+
+  Register:
+    type: object
+    properties:
+      identifier:
+        type: string
+        example: "1"
+      rate:
+        type: string
+        example: "STANDARD"
+      is_settlement_register:
+        type: boolean
+        example: true
+
+  AccountAgreement:
+    type: object
+    properties:
+      tariff_code:
+        type: string
+        example: "E-1R-VAR-20-09-22-N"
+      valid_from:
+        type: string
+        format: datetime
+        example: "2020-12-17T00:00:00Z"
+      valid_to:
+        type: string
+        format: datetime
+
+securityDefinitions:
+  DRFKrakenTokenAuthentication:
+    description: JWT-based authentication
+    in: header
+    name: Authorization
+    type: apiKey
+  KeyAuthentication:
+    description: Token-based authentication with required prefix "Token "
+    in: header
+    name: Authorization
+    type: apiKey
+x-components: {}
+
